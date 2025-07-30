@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Chat - Rise of Kingdoms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(-45deg, #232526, #414345, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            color: #E0E0E0;
+        }
+
+        /* Estilo Glassmorphism Principal */
+        .glass-container {
+            background: rgba(30, 30, 40, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 1.5rem; /* 24px */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        #editable-message {
+            min-height: 200px;
+            outline: none;
+            cursor: text;
+            color: white;
+            font-size: 16px;
+        }
+        #editable-message:empty:before {
+            content: attr(data-placeholder);
+            color: #a0aec0;
+        }
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        .toolbar-divider {
+            width: 1px;
+            height: 24px;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+        .tab-btn {
+            background-color: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            color: rgba(255, 255, 255, 0.6);
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            color: white;
+            border-bottom-color: #3b82f6;
+        }
+        .action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+        .style-btn {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .style-btn:hover {
+            background: rgba(0,0,0,0.4);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Custom Dropdowns */
+        .custom-dropdown-trigger {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e0;
+            border-radius: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+        .custom-dropdown-options {
+            background: rgba(30, 30, 40, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 50;
+        }
+        .custom-dropdown-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+
+        <header class="mb-8 text-center">
+            <div class="flex justify-center items-center flex-wrap gap-x-4 gap-y-2 mb-2">
+                <h1 data-translate-key="main_title" class="text-3xl md:text-4xl font-bold text-white">Gerador de Mensagens Rok</h1>
+                <!-- Custom Language Selector -->
+                <div id="custom-language-selector" class="relative">
+                    <button id="language-select-trigger" class="custom-dropdown-trigger flex items-center gap-2">
+                        <span id="selected-language-text">Português</span>
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="language-options" class="custom-dropdown-options absolute hidden mt-2 w-full rounded-md shadow-lg">
+                        <!-- Options will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+            <p data-translate-key="subtitle" class="text-gray-300">Crie e formate mensagens no estilo Rise of Kingdoms</p>
+        </header>
+
+        <!-- Navegação das Abas -->
+        <div class="mb-4 border-b border-gray-700/50">
+            <nav class="flex -mb-px">
+                <button id="tab-editor" class="tab-btn py-2 px-4 rounded-t-lg" data-translate-key="editor_tab">Editor</button>
+                <button id="tab-saved" class="tab-btn py-2 px-4 rounded-t-lg" data-translate-key="saved_texts_tab">Textos Prontos</button>
+            </nav>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <main>
+            <!-- Visão do Editor -->
+            <div id="editor-view">
+                <div class="glass-container">
+                    <div id="toolbar" class="p-3 flex items-center flex-wrap gap-x-3 gap-y-2 border-b border-white/10">
+                        <input type="color" id="text-color" value="#FFFFFF" class="p-0 h-8 w-8 bg-transparent border-2 border-white/20 rounded-md cursor-pointer appearance-none" data-translate-key-title="color_title" title="Cor do Texto">
+                        <div class="toolbar-divider"></div>
+                        <button data-command="bold" class="style-btn w-8 h-8 flex items-center justify-center rounded-md font-bold" data-translate-key-title="bold_title" title="Negrito">B</button>
+                        <button data-command="italic" class="style-btn w-8 h-8 flex items-center justify-center rounded-md italic" data-translate-key-title="italic_title" title="Itálico">I</button>
+                        <button data-command="underline" class="style-btn w-8 h-8 flex items-center justify-center rounded-md underline" data-translate-key-title="underline_title" title="Sublinhado">U</button>
+                        <button data-command="strikeThrough" class="style-btn w-8 h-8 flex items-center justify-center rounded-md line-through" data-translate-key-title="strikethrough_title" title="Tachado">S</button>
+                        <div class="toolbar-divider"></div>
+                        <div class="flex items-center gap-2">
+                            <label for="font-size-input" data-translate-key="font_size_label" class="text-sm">Tamanho:</label>
+                            <div class="relative flex items-center">
+                                <input id="font-size-input" type="number" min="10" max="32" value="16" class="w-16 bg-black/20 text-white text-center rounded-md border border-white/10 focus:ring-blue-500 focus:border-blue-500 h-8 pr-6">
+                                <div class="absolute right-1 h-full flex flex-col justify-center">
+                                    <button id="font-up-btn" class="h-1/2 w-5 flex items-center justify-center text-gray-400 hover:text-white rounded-tr-sm"><svg class="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 15l7-7 7 7"></path></svg></button>
+                                    <button id="font-down-btn" class="h-1/2 w-5 flex items-center justify-center text-gray-400 hover:text-white rounded-br-sm"><svg class="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="toolbar-divider"></div>
+                        <button id="btn-import" class="style-btn h-8 rounded-md px-3 text-sm flex items-center gap-1" data-translate-key-title="import_code_title" title="Importar Código">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555ZM0 4.697v7.104l5.803-3.558L0 4.697ZM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757Zm3.436-.586L16 11.801V4.697l-5.803 3.546Z"/></svg>
+                            <span data-translate-key="import_button">Importar</span>
+                        </button>
+                    </div>
+
+                    <div class="p-4">
+                         <div id="editable-message" contenteditable="true" data-placeholder="Digite e formate sua mensagem aqui..."></div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                    <button id="copy-btn" class="action-btn w-full text-white font-semibold py-3 px-4 rounded-lg" data-translate-key="copy_button">Copiar Mensagem</button>
+                    <button id="save-btn" class="action-btn w-full text-white font-semibold py-3 px-4 rounded-lg" data-translate-key="save_button">Salvar Texto</button>
+                    <button id="reset-btn" class="action-btn w-full text-white font-semibold py-3 px-4 rounded-lg" data-translate-key="clear_button">Limpar Tudo</button>
+                </div>
+                <div id="copy-feedback" class="text-center text-green-400 mt-2 h-6 transition-opacity duration-300 opacity-0" data-translate-key="copy_feedback">Texto copiado para a área de transferência!</div>
+            </div>
+
+            <!-- Visão de Textos Salvos -->
+            <div id="saved-texts-view" class="hidden">
+                <div id="saved-texts-container" class="space-y-4">
+                    <!-- Textos salvos serão inseridos aqui -->
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-8 py-4">
+            <p class="text-gray-400 text-sm">Criado por PENETRAZ</p>
+        </footer>
+
+    </div>
+    
+    <div id="import-modal" class="modal pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center opacity-0">
+        <div class="modal-overlay absolute w-full h-full bg-black/50"></div>
+        <div class="modal-container glass-container w-11/12 md:max-w-lg mx-auto z-50 overflow-y-auto p-6">
+            <div class="flex justify-between items-center pb-3">
+                <p class="text-2xl font-bold" data-translate-key="import_modal_title">Importar Código</p>
+                <button id="import-modal-close" class="cursor-pointer z-50 text-white/70 hover:text-white"><svg class="fill-current" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg></button>
+            </div>
+            <div>
+                  <label for="import-code" class="block mb-2 text-sm font-medium text-gray-300" data-translate-key="import_modal_label">Cole o código da mensagem aqui:</label>
+                  <textarea id="import-code" rows="6" class="w-full bg-black/30 border border-white/20 text-white text-sm rounded-lg p-2.5" placeholder="<color=#ff0000><b>Olá</b></color>"></textarea>
+            </div>
+            <div class="flex justify-end pt-4 gap-2">
+                <button id="import-modal-cancel" class="action-btn px-4 py-2 rounded-lg text-sm" data-translate-key="cancel_button">Cancelar</button>
+                <button id="import-modal-confirm" class="action-btn bg-blue-600/50 hover:bg-blue-600/80 px-4 py-2 rounded-lg text-sm" data-translate-key="import_modal_button">Importar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- LÓGICA DE TRADUÇÃO ---
+        const translations = {
+            'pt': {
+                lang_name: 'Português',
+                main_title: 'Gerador de Mensagens Rok',
+                subtitle: 'Crie e formate mensagens no estilo Rise of Kingdoms',
+                editor_tab: 'Editor',
+                saved_texts_tab: 'Textos Prontos',
+                color_title: 'Cor do Texto',
+                bold_title: 'Negrito',
+                italic_title: 'Itálico',
+                underline_title: 'Sublinhado',
+                strikethrough_title: 'Tachado',
+                font_size_label: 'Tamanho:',
+                import_code_title: 'Importar Código',
+                import_button: 'Importar',
+                placeholder: 'Digite e formate sua mensagem aqui...',
+                copy_button: 'Copiar Mensagem',
+                save_button: 'Salvar Texto',
+                clear_button: 'Limpar Tudo',
+                copy_feedback: 'Texto copiado para a área de transferência!',
+                save_feedback_success: 'Texto salvo com sucesso!',
+                save_feedback_empty: 'Não há texto para salvar.',
+                import_modal_title: 'Importar Código',
+                import_modal_label: 'Cole o código da mensagem aqui:',
+                cancel_button: 'Cancelar',
+                import_modal_button: 'Importar',
+                load_text_button: 'Carregar',
+                delete_text_button: 'Excluir',
+                no_saved_texts: 'Nenhum texto salvo ainda.'
+            },
+            'en': {
+                lang_name: 'English',
+                main_title: 'RoK Message Generator',
+                subtitle: 'Create and format messages in Rise of Kingdoms style',
+                editor_tab: 'Editor',
+                saved_texts_tab: 'Saved Texts',
+                color_title: 'Text Color',
+                bold_title: 'Bold',
+                italic_title: 'Italic',
+                underline_title: 'Underline',
+                strikethrough_title: 'Strikethrough',
+                font_size_label: 'Size:',
+                import_code_title: 'Import Code',
+                import_button: 'Import',
+                placeholder: 'Type and format your message here...',
+                copy_button: 'Copy Message',
+                save_button: 'Save Text',
+                clear_button: 'Clear All',
+                copy_feedback: 'Text copied to clipboard!',
+                save_feedback_success: 'Text saved successfully!',
+                save_feedback_empty: 'There is no text to save.',
+                import_modal_title: 'Import Code',
+                import_modal_label: 'Paste the message code here:',
+                cancel_button: 'Cancel',
+                import_modal_button: 'Import',
+                load_text_button: 'Load',
+                delete_text_button: 'Delete',
+                no_saved_texts: 'No saved texts yet.'
+            },
+            'es': {
+                lang_name: 'Español',
+                main_title: 'Generador de Mensajes RoK',
+                subtitle: 'Crea y formatea mensajes al estilo Rise of Kingdoms',
+                editor_tab: 'Editor',
+                saved_texts_tab: 'Textos Guardados',
+                color_title: 'Color del Texto',
+                bold_title: 'Negrita',
+                italic_title: 'Cursiva',
+                underline_title: 'Subrayado',
+                strikethrough_title: 'Tachado',
+                font_size_label: 'Tamaño:',
+                import_code_title: 'Importar Código',
+                import_button: 'Importar',
+                placeholder: 'Escribe y formatea tu mensaje aquí...',
+                copy_button: 'Copiar Mensaje',
+                save_button: 'Guardar Texto',
+                clear_button: 'Limpiar Todo',
+                copy_feedback: '¡Texto copiado al portapapeles!',
+                save_feedback_success: '¡Texto guardado con éxito!',
+                save_feedback_empty: 'No hay texto para guardar.',
+                import_modal_title: 'Importar Código',
+                import_modal_label: 'Pega el código del mensaje aquí:',
+                cancel_button: 'Cancelar',
+                import_modal_button: 'Importar',
+                load_text_button: 'Cargar',
+                delete_text_button: 'Eliminar',
+                no_saved_texts: 'Aún no hay textos guardados.'
+            },
+            'de': {
+                lang_name: 'Deutsch',
+                main_title: 'RoK-Nachrichtengenerator',
+                subtitle: 'Nachrichten im Stil von Rise of Kingdoms erstellen und formatieren',
+                editor_tab: 'Editor',
+                saved_texts_tab: 'Gespeicherte Texte',
+                color_title: 'Textfarbe',
+                bold_title: 'Fett',
+                italic_title: 'Kursiv',
+                underline_title: 'Unterstrichen',
+                strikethrough_title: 'Durchgestrichen',
+                font_size_label: 'Größe:',
+                import_code_title: 'Code importieren',
+                import_button: 'Importieren',
+                placeholder: 'Nachricht hier tippen und formatieren...',
+                copy_button: 'Nachricht kopieren',
+                save_button: 'Text speichern',
+                clear_button: 'Alles löschen',
+                copy_feedback: 'Text in die Zwischenablage kopiert!',
+                save_feedback_success: 'Text erfolgreich gespeichert!',
+                save_feedback_empty: 'Es gibt keinen Text zum Speichern.',
+                import_modal_title: 'Code importieren',
+                import_modal_label: 'Nachrichtencode hier einfügen:',
+                cancel_button: 'Abbrechen',
+                import_modal_button: 'Importieren',
+                load_text_button: 'Laden',
+                delete_text_button: 'Löschen',
+                no_saved_texts: 'Noch keine Texte gespeichert.'
+            },
+            'fr': {
+                lang_name: 'Français',
+                main_title: 'Générateur de Messages RoK',
+                subtitle: 'Créez et formatez des messages dans le style de Rise of Kingdoms',
+                editor_tab: 'Éditeur',
+                saved_texts_tab: 'Textes Enregistrés',
+                color_title: 'Couleur du texte',
+                bold_title: 'Gras',
+                italic_title: 'Italique',
+                underline_title: 'Souligné',
+                strikethrough_title: 'Barré',
+                font_size_label: 'Taille :',
+                import_code_title: 'Importer le code',
+                import_button: 'Importer',
+                placeholder: 'Saisissez et mettez en forme votre message ici...',
+                copy_button: 'Copier le message',
+                save_button: 'Enregistrer le texte',
+                clear_button: 'Tout effacer',
+                copy_feedback: 'Texte copié dans le presse-papiers !',
+                save_feedback_success: 'Texte enregistré avec succès !',
+                save_feedback_empty: 'Aucun texte à enregistrer.',
+                import_modal_title: 'Importer le code',
+                import_modal_label: 'Collez le code du message ici :',
+                cancel_button: 'Annuler',
+                import_modal_button: 'Importer',
+                load_text_button: 'Charger',
+                delete_text_button: 'Supprimer',
+                no_saved_texts: 'Aucun texte enregistré pour le moment.'
+            },
+            'it': {
+                lang_name: 'Italiano',
+                main_title: 'Generatore di Messaggi RoK',
+                subtitle: 'Crea e formatta messaggi nello stile di Rise of Kingdoms',
+                editor_tab: 'Editor',
+                saved_texts_tab: 'Testi Salvati',
+                color_title: 'Colore del testo',
+                bold_title: 'Grassetto',
+                italic_title: 'Corsivo',
+                underline_title: 'Sottolineato',
+                strikethrough_title: 'Barrato',
+                font_size_label: 'Dimensione:',
+                import_code_title: 'Importa Codice',
+                import_button: 'Importa',
+                placeholder: 'Scrivi e formatta il tuo messaggio qui...',
+                copy_button: 'Copia Messaggio',
+                save_button: 'Salva Testo',
+                clear_button: 'Cancella Tutto',
+                copy_feedback: 'Testo copiato negli appunti!',
+                save_feedback_success: 'Testo salvato con successo!',
+                save_feedback_empty: 'Nessun testo da salvare.',
+                import_modal_title: 'Importa Codice',
+                import_modal_label: 'Incolla qui il codice del messaggio:',
+                cancel_button: 'Annulla',
+                import_modal_button: 'Importa',
+                load_text_button: 'Carica',
+                delete_text_button: 'Elimina',
+                no_saved_texts: 'Nessun testo salvato ancora.'
+            },
+            'ru': {
+                lang_name: 'Русский',
+                main_title: 'Генератор сообщений RoK',
+                subtitle: 'Создавайте и форматируйте сообщения в стиле Rise of Kingdoms',
+                editor_tab: 'Редактор',
+                saved_texts_tab: 'Сохраненные тексты',
+                color_title: 'Цвет текста',
+                bold_title: 'Полужирный',
+                italic_title: 'Курсив',
+                underline_title: 'Подчеркнутый',
+                strikethrough_title: 'Зачеркнутый',
+                font_size_label: 'Размер:',
+                import_code_title: 'Импортировать код',
+                import_button: 'Импорт',
+                placeholder: 'Введите и отформатируйте ваше сообщение здесь...',
+                copy_button: 'Копировать сообщение',
+                save_button: 'Сохранить текст',
+                clear_button: 'Очистить все',
+                copy_feedback: 'Текст скопирован в буфер обмена!',
+                save_feedback_success: 'Текст успешно сохранен!',
+                save_feedback_empty: 'Нет текста для сохранения.',
+                import_modal_title: 'Импортировать код',
+                import_modal_label: 'Вставьте код сообщения сюда:',
+                cancel_button: 'Отмена',
+                import_modal_button: 'Импорт',
+                load_text_button: 'Загрузить',
+                delete_text_button: 'Удалить',
+                no_saved_texts: 'Пока нет сохраненных текстов.'
+            },
+            'ja': {
+                lang_name: '日本語',
+                main_title: 'RoKメッセージジェネレーター',
+                subtitle: 'Rise of Kingdoms風のメッセージを作成・フォーマット',
+                editor_tab: 'エディタ',
+                saved_texts_tab: '保存済みテキスト',
+                color_title: '文字色',
+                bold_title: '太字',
+                italic_title: '斜体',
+                underline_title: '下線',
+                strikethrough_title: '取り消し線',
+                font_size_label: 'サイズ:',
+                import_code_title: 'コードをインポート',
+                import_button: 'インポート',
+                placeholder: 'ここにメッセージを入力・編集してください...',
+                copy_button: 'メッセージをコピー',
+                save_button: 'テキストを保存',
+                clear_button: 'すべてクリア',
+                copy_feedback: 'テキストをクリップボードにコピーしました！',
+                save_feedback_success: 'テキストが正常に保存されました！',
+                save_feedback_empty: '保存するテキストがありません。',
+                import_modal_title: 'コードをインポート',
+                import_modal_label: 'ここにメッセージコードを貼り付けてください:',
+                cancel_button: 'キャンセル',
+                import_modal_button: 'インポート',
+                load_text_button: '読み込む',
+                delete_text_button: '削除',
+                no_saved_texts: '保存されたテキストはまだありません。'
+            },
+            'ko': {
+                lang_name: '한국어',
+                main_title: 'RoK 메시지 생성기',
+                subtitle: 'Rise of Kingdoms 스타일로 메시지 생성 및 서식 지정',
+                editor_tab: '편집기',
+                saved_texts_tab: '저장된 텍스트',
+                color_title: '텍스트 색상',
+                bold_title: '굵게',
+                italic_title: '기울임꼴',
+                underline_title: '밑줄',
+                strikethrough_title: '취소선',
+                font_size_label: '크기:',
+                import_code_title: '코드 가져오기',
+                import_button: '가져오기',
+                placeholder: '여기에 메시지를 입력하고 서식을 지정하세요...',
+                copy_button: '메시지 복사',
+                save_button: '텍스트 저장',
+                clear_button: '모두 지우기',
+                copy_feedback: '텍스트가 클립보드에 복사되었습니다!',
+                save_feedback_success: '텍스트가 성공적으로 저장되었습니다!',
+                save_feedback_empty: '저장할 텍스트가 없습니다.',
+                import_modal_title: '코드 가져오기',
+                import_modal_label: '여기에 메시지 코드를 붙여넣으세요:',
+                cancel_button: '취소',
+                import_modal_button: '가져오기',
+                load_text_button: '불러오기',
+                delete_text_button: '삭제',
+                no_saved_texts: '아직 저장된 텍스트가 없습니다.'
+            },
+             'zh': {
+                lang_name: '中文 (简体)',
+                main_title: 'RoK 消息生成器',
+                subtitle: '创建并格式化万国觉醒风格的消息',
+                editor_tab: '编辑器',
+                saved_texts_tab: '已存消息',
+                color_title: '文本颜色',
+                bold_title: '粗体',
+                italic_title: '斜体',
+                underline_title: '下划线',
+                strikethrough_title: '删除线',
+                font_size_label: '字号:',
+                import_code_title: '导入代码',
+                import_button: '导入',
+                placeholder: '在此处键入并格式化您的消息...',
+                copy_button: '复制消息',
+                save_button: '保存消息',
+                clear_button: '全部清除',
+                copy_feedback: '文本已复制到剪贴板！',
+                save_feedback_success: '消息保存成功！',
+                save_feedback_empty: '没有要保存的消息。',
+                import_modal_title: '导入代码',
+                import_modal_label: '在此处粘贴消息代码：',
+                cancel_button: '取消',
+                import_modal_button: '导入',
+                load_text_button: '加载',
+                delete_text_button: '删除',
+                no_saved_texts: '尚无已存消息。'
+            }
+        };
+
+        let currentLanguage = 'pt';
+
+        function translatePage(lang) {
+            currentLanguage = lang;
+            const langDict = translations[lang] || translations['pt'];
+
+            document.querySelectorAll('[data-translate-key]').forEach(el => {
+                const key = el.dataset.translateKey;
+                if (langDict[key]) {
+                    el.innerHTML = langDict[key];
+                }
+            });
+             document.querySelectorAll('[data-translate-key-title]').forEach(el => {
+                const key = el.dataset.translateKeyTitle;
+                if (langDict[key]) {
+                    el.title = langDict[key];
+                }
+            });
+            const placeholderEl = document.getElementById('editable-message');
+            if (langDict.placeholder) {
+                placeholderEl.dataset.placeholder = langDict.placeholder;
+            }
+            document.getElementById('selected-language-text').textContent = langDict.lang_name;
+            renderSavedTexts();
+        }
+        
+        // --- Custom Language Selector Logic ---
+        const langSelector = document.getElementById('custom-language-selector');
+        const langTrigger = document.getElementById('language-select-trigger');
+        const langOptions = document.getElementById('language-options');
+
+        function populateLangOptions() {
+            langOptions.innerHTML = '';
+            for (const [langCode, langData] of Object.entries(translations)) {
+                const option = document.createElement('div');
+                option.textContent = langData.lang_name;
+                option.dataset.value = langCode;
+                option.className = 'custom-dropdown-option p-2 cursor-pointer';
+                option.addEventListener('click', () => {
+                    translatePage(langCode);
+                    langOptions.classList.add('hidden');
+                });
+                langOptions.appendChild(option);
+            }
+        }
+        
+        langTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            langOptions.classList.toggle('hidden');
+        });
+
+        // --- FIM DA LÓGICA DE TRADUÇÃO ---
+
+        // Elementos do DOM
+        const editableMessage = document.getElementById('editable-message');
+        const textColorInput = document.getElementById('text-color');
+        const fontSizeInput = document.getElementById('font-size-input');
+        const fontUpBtn = document.getElementById('font-up-btn');
+        const fontDownBtn = document.getElementById('font-down-btn');
+        const styleButtons = document.querySelectorAll('.style-btn');
+        const importButton = document.getElementById('btn-import');
+        const copyButton = document.getElementById('copy-btn');
+        const resetButton = document.getElementById('reset-btn');
+        const saveButton = document.getElementById('save-btn');
+        const copyFeedback = document.getElementById('copy-feedback');
+        
+        // Modais
+        const importModal = document.getElementById('import-modal');
+        const importCodeInput = document.getElementById('import-code');
+        const importModalClose = document.getElementById('import-modal-close');
+        const importModalCancel = document.getElementById('import-modal-cancel');
+        const importModalConfirm = document.getElementById('import-modal-confirm');
+
+        // Abas
+        const tabEditor = document.getElementById('tab-editor');
+        const tabSaved = document.getElementById('tab-saved');
+        const editorView = document.getElementById('editor-view');
+        const savedTextsView = document.getElementById('saved-texts-view');
+        const savedTextsContainer = document.getElementById('saved-texts-container');
+        
+        let savedSelection = null; 
+
+        // --- LÓGICA DAS ABAS ---
+        function showView(viewToShow) {
+            editorView.classList.add('hidden');
+            savedTextsView.classList.add('hidden');
+            tabEditor.classList.remove('active');
+            tabSaved.classList.remove('active');
+
+            if (viewToShow === 'editor') {
+                editorView.classList.remove('hidden');
+                tabEditor.classList.add('active');
+            } else {
+                savedTextsView.classList.remove('hidden');
+                tabSaved.classList.add('active');
+                renderSavedTexts();
+            }
+        }
+
+        tabEditor.addEventListener('click', () => showView('editor'));
+        tabSaved.addEventListener('click', () => showView('saved'));
+
+        // --- LÓGICA DE TEXTOS SALVOS (localStorage) ---
+        const getSavedTexts = () => JSON.parse(localStorage.getItem('rok_saved_texts')) || [];
+        const saveTextsToStorage = (texts) => localStorage.setItem('rok_saved_texts', JSON.stringify(texts));
+
+        function renderSavedTexts() {
+            const texts = getSavedTexts();
+            savedTextsContainer.innerHTML = ''; // Limpa a lista
+            const langDict = translations[currentLanguage] || translations['pt'];
+
+            if (texts.length === 0) {
+                savedTextsContainer.innerHTML = `<div class="glass-container p-8 text-center"><p class="text-gray-400">${langDict.no_saved_texts}</p></div>`;
+                return;
+            }
+
+            const listContainer = document.createElement('div');
+            listContainer.className = 'glass-container p-4 space-y-3';
+            
+            texts.forEach(text => {
+                const textCard = document.createElement('div');
+                textCard.className = 'bg-black/20 p-4 rounded-lg flex justify-between items-center';
+                
+                const title = document.createElement('p');
+                title.className = 'text-white truncate';
+                title.textContent = text.title;
+                
+                const buttonsWrapper = document.createElement('div');
+                buttonsWrapper.className = 'flex items-center gap-2';
+                
+                const loadBtn = document.createElement('button');
+                loadBtn.className = 'action-btn text-white font-bold py-1 px-3 rounded-md text-sm';
+                loadBtn.textContent = langDict.load_text_button;
+                loadBtn.onclick = () => loadText(text.id);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'action-btn text-white p-2 rounded-md';
+                deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>';
+                deleteBtn.title = langDict.delete_text_button;
+                deleteBtn.onclick = () => deleteText(text.id);
+
+                buttonsWrapper.appendChild(loadBtn);
+                buttonsWrapper.appendChild(deleteBtn);
+                textCard.appendChild(title);
+                textCard.appendChild(buttonsWrapper);
+                listContainer.appendChild(textCard);
+            });
+            savedTextsContainer.appendChild(listContainer);
+        }
+
+        function saveCurrentText() {
+            const content = editableMessage.innerHTML;
+            const plainText = editableMessage.innerText.trim();
+            const langDict = translations[currentLanguage] || translations['pt'];
+
+            if (!plainText) {
+                copyFeedback.textContent = langDict.save_feedback_empty;
+                copyFeedback.classList.replace('text-green-400', 'text-yellow-400');
+                copyFeedback.classList.remove('opacity-0');
+                setTimeout(() => copyFeedback.classList.add('opacity-0'), 2000);
+                return;
+            }
+
+            const title = plainText.split('\n')[0].substring(0, 50) || 'Texto sem título';
+            const texts = getSavedTexts();
+            const newText = {
+                id: Date.now(),
+                title: title,
+                content: content
+            };
+            texts.unshift(newText); // Adiciona no início
+            saveTextsToStorage(texts);
+
+            copyFeedback.textContent = langDict.save_feedback_success;
+            copyFeedback.classList.replace('text-yellow-400', 'text-green-400');
+            copyFeedback.classList.remove('opacity-0');
+            setTimeout(() => copyFeedback.classList.add('opacity-0'), 2000);
+        }
+
+        function loadText(id) {
+            const texts = getSavedTexts();
+            const textToLoad = texts.find(t => t.id === id);
+            if (textToLoad) {
+                editableMessage.innerHTML = textToLoad.content;
+                showView('editor');
+            }
+        }
+
+        function deleteText(id) {
+            let texts = getSavedTexts();
+            texts = texts.filter(t => t.id !== id);
+            saveTextsToStorage(texts);
+            renderSavedTexts();
+        }
+
+        saveButton.addEventListener('click', saveCurrentText);
+
+        window.addEventListener('load', () => {
+            editableMessage.focus();
+            populateLangOptions();
+            const userLang = (navigator.language || navigator.userLanguage).split('-')[0];
+            const langExists = Object.keys(translations).includes(userLang);
+            const initialLang = langExists ? userLang : 'pt';
+            translatePage(initialLang);
+            showView('editor');
+        });
+
+        // --- LÓGICA DE SELEÇÃO E ESTILO ---
+
+        const updateToolbarState = () => {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            let currentNode = selection.anchorNode;
+            if (currentNode.nodeType === 3) { 
+                currentNode = currentNode.parentElement;
+            }
+            
+            let sizeFound = false;
+            while (currentNode && currentNode !== editableMessage) {
+                if (currentNode.nodeName === 'SPAN' && currentNode.style.fontSize) {
+                    fontSizeInput.value = parseInt(currentNode.style.fontSize, 10);
+                    sizeFound = true;
+                    break;
+                }
+                currentNode = currentNode.parentElement;
+            }
+            if (!sizeFound) {
+                fontSizeInput.value = 16;
+            }
+        };
+
+        const saveSelection = () => {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                savedSelection = selection.getRangeAt(0).cloneRange();
+                updateToolbarState();
+            }
+        };
+
+        editableMessage.addEventListener('mouseup', saveSelection);
+        editableMessage.addEventListener('keyup', saveSelection);
+
+
+        function applyCommand(command, value = null) {
+            editableMessage.focus();
+            if (savedSelection) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(savedSelection);
+            }
+            document.execCommand(command, false, value);
+            saveSelection();
+        }
+
+        styleButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                applyCommand(btn.dataset.command)
+            });
+        });
+
+        textColorInput.addEventListener('input', () => {
+            applyCommand('foreColor', textColorInput.value);
+        });
+        
+        const applyFontSize = () => {
+            const size = fontSizeInput.value;
+            editableMessage.focus();
+            if (savedSelection && !savedSelection.collapsed) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(savedSelection);
+        
+                const range = selection.getRangeAt(0);
+                const selectedContent = range.extractContents();
+                const wrapper = document.createElement('span');
+                wrapper.style.fontSize = `${size}px`;
+                wrapper.appendChild(selectedContent);
+                range.insertNode(wrapper);
+
+                range.selectNodeContents(wrapper);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                saveSelection();
+            }
+        };
+
+        fontSizeInput.addEventListener('change', applyFontSize);
+        fontUpBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            fontSizeInput.stepUp();
+            applyFontSize();
+        });
+        fontDownBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            fontSizeInput.stepDown();
+            applyFontSize();
+        });
+
+
+        function insertHtmlAtCursor(html) {
+            editableMessage.focus();
+            if (window.getSelection) {
+                const sel = window.getSelection();
+                if (sel.getRangeAt && sel.rangeCount) {
+                    let range = savedSelection || sel.getRangeAt(0);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    
+                    range.deleteContents();
+                    const el = document.createElement("div");
+                    el.innerHTML = html;
+                    const frag = document.createDocumentFragment();
+                    let node, lastNode;
+                    while ((node = el.firstChild)) {
+                        lastNode = frag.appendChild(node);
+                    }
+                    range.insertNode(frag);
+                    
+                    // Move cursor after inserted content
+                    if (lastNode) {
+                        range = range.cloneRange();
+                        range.setStartAfter(lastNode);
+                        range.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+            }
+            saveSelection();
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (!langSelector.contains(e.target)) {
+                langOptions.classList.add('hidden');
+            }
+        });
+
+
+        // --- MODAL DE IMPORTAÇÃO ---
+        function openImportModal() {
+            importModal.classList.remove('opacity-0', 'pointer-events-none');
+            importCodeInput.focus();
+        }
+        function closeImportModal() {
+            importModal.classList.add('opacity-0', 'pointer-events-none');
+            importCodeInput.value = '';
+        }
+        importButton.addEventListener('click', openImportModal);
+        importModalClose.addEventListener('click', closeImportModal);
+        importModalCancel.addEventListener('click', closeImportModal);
+        importModalConfirm.addEventListener('click', () => {
+            const code = importCodeInput.value;
+            if (code) {
+                const html = rokToHtml(code);
+                editableMessage.innerHTML = html;
+            }
+            closeImportModal();
+        });
+
+        function rokToHtml(text) {
+            const lines = text.split(/\r?\n/);
+            const htmlLines = lines.map(line => {
+                if (line.trim() === '') return '<br>';
+                return line
+                    .replace(/<color=(#[0-9a-fA-F]{6})>(.*?)<\/color>/gi, '<span style="color:$1">$2</span>')
+                    .replace(/<size=(\d+)>(.*?)<\/size>/gi, '<span style="font-size:$1px">$2</span>')
+                    .replace(/<b>(.*?)<\/b>/gi, '<b>$1</b>')
+                    .replace(/<i>(.*?)<\/i>/gi, '<i>$1</i>')
+                    .replace(/<u>(.*?)<\/u>/gi, '<u>$1</u>')
+                    .replace(/<s>(.*?)<\/s>/gi, '<s>$1</s>')
+                    .replace(/\[url=([^\]]+)\](.*?)\[\/url\]/gi, '<a href="$1" target="_blank" style="color: #8ab4f8; text-decoration: underline;">$2</a>');
+            });
+            
+            return `<div>${htmlLines.join('</div><div>')}</div>`;
+        }
+
+        // --- FUNÇÃO DE CÓPIA CORRIGIDA ---
+        function rgbToHex(rgb) {
+            if (!rgb || !rgb.startsWith('rgb')) return rgb;
+            let sep = rgb.indexOf(",") > -1 ? "," : " ";
+            rgb = rgb.substr(4).split(")")[0].split(sep);
+            let r = (+rgb[0]).toString(16),
+                g = (+rgb[1]).toString(16),
+                b = (+rgb[2]).toString(16);
+            if (r.length == 1) r = "0" + r;
+            if (g.length == 1) g = "0" + g;
+            if (b.length == 1) b = "0" + b;
+            return "#" + r + g + b;
+        }
+
+        function nodeToRok(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.textContent;
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return '';
+            }
+
+            let content = '';
+            for (const child of node.childNodes) {
+                content += nodeToRok(child);
+            }
+            
+            let prefix = '';
+            let suffix = '';
+
+            const color = node.style.color || node.getAttribute('color');
+            if (color) {
+                const hexColor = rgbToHex(color);
+                if (hexColor && hexColor.toLowerCase() !== '#ffffff') {
+                    prefix += `<color=${hexColor}>`;
+                    suffix = `</color>${suffix}`;
+                }
+            }
+
+            if (node.style.fontSize) {
+                const size = parseInt(node.style.fontSize, 10);
+                if (size && size !== 16) {
+                     prefix += `<size=${size}>`;
+                     suffix = `</size>${suffix}`;
+                }
+            }
+
+            switch (node.tagName.toLowerCase()) {
+                case 'b': case 'strong': prefix += '<b>'; suffix = '</b>' + suffix; break;
+                case 'i': case 'em': prefix += '<i>'; suffix = '</i>' + suffix; break;
+                case 'u': prefix += '<u>'; suffix = '</u>' + suffix; break;
+                case 's': case 'strike': prefix += '<s>'; suffix = '</s>' + suffix; break;
+                case 'a': prefix += `[url=${node.href}]`; suffix = `[/url]` + suffix; break;
+                case 'br': return '\n';
+                case 'div': case 'p':
+                    if (node.nextSibling) {
+                        suffix += '\n';
+                    }
+                    break;
+            }
+
+            return prefix + content + suffix;
+        }
+
+        function convertToRokFormat(rootElement) {
+            let output = '';
+            for (const node of rootElement.childNodes) {
+                output += nodeToRok(node);
+            }
+            return output.replace(/\n\n/g, '\n');
+        }
+
+        copyButton.addEventListener('click', () => {
+            const formattedText = convertToRokFormat(editableMessage);
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = formattedText;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            try {
+                document.execCommand('copy');
+                const langDict = translations[currentLanguage] || translations['pt'];
+                copyFeedback.textContent = langDict.copy_feedback;
+                copyFeedback.classList.remove('opacity-0');
+                setTimeout(() => copyFeedback.classList.add('opacity-0'), 2000);
+            } catch (err) {
+                console.error('Falha ao copiar texto: ', err);
+            }
+            document.body.removeChild(tempTextArea);
+        });
+
+        resetButton.addEventListener('click', () => {
+            editableMessage.innerHTML = '';
+            textColorInput.value = '#FFFFFF';
+            fontSizeInput.value = '16';
+            editableMessage.focus();
+        });
+    </script>
+</body>
+</html>
