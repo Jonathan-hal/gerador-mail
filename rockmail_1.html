@@ -810,39 +810,6 @@
             fontSizeInput.stepDown();
             applyFontSize();
         });
-
-
-        function insertHtmlAtCursor(html) {
-            editableMessage.focus();
-            if (window.getSelection) {
-                const sel = window.getSelection();
-                if (sel.getRangeAt && sel.rangeCount) {
-                    let range = savedSelection || sel.getRangeAt(0);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                    
-                    range.deleteContents();
-                    const el = document.createElement("div");
-                    el.innerHTML = html;
-                    const frag = document.createDocumentFragment();
-                    let node, lastNode;
-                    while ((node = el.firstChild)) {
-                        lastNode = frag.appendChild(node);
-                    }
-                    range.insertNode(frag);
-                    
-                    // Move cursor after inserted content
-                    if (lastNode) {
-                        range = range.cloneRange();
-                        range.setStartAfter(lastNode);
-                        range.collapse(true);
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    }
-                }
-            }
-            saveSelection();
-        }
         
         document.addEventListener('click', (e) => {
             if (!langSelector.contains(e.target)) {
@@ -903,6 +870,7 @@
             return "#" + r + g + b;
         }
 
+        // REVISED PARAGRAPH-AWARE CONVERSION LOGIC
         function nodeToRok(node) {
             if (node.nodeType === Node.TEXT_NODE) {
                 return node.textContent;
@@ -911,7 +879,7 @@
             if (node.nodeType !== Node.ELEMENT_NODE) {
                 return '';
             }
-
+            
             let content = '';
             for (const child of node.childNodes) {
                 content += nodeToRok(child);
@@ -944,23 +912,27 @@
                 case 's': case 'strike': prefix += '<s>'; suffix = '</s>' + suffix; break;
                 case 'a': prefix += `[url=${node.href}]`; suffix = `[/url]` + suffix; break;
                 case 'br': return '\n';
-                case 'div': case 'p':
-                    if (node.nextSibling) {
-                        suffix += '\n';
-                    }
-                    break;
             }
 
             return prefix + content + suffix;
         }
 
         function convertToRokFormat(rootElement) {
-            let output = '';
-            for (const node of rootElement.childNodes) {
-                output += nodeToRok(node);
+            const lines = [];
+            for (const paragraphNode of rootElement.childNodes) {
+                // Treat each direct child of the editor as a potential line
+                let lineText = nodeToRok(paragraphNode);
+                
+                // Specifically check for divs that are visually empty but might contain a <br> tag, which is common.
+                if (paragraphNode.nodeName === 'DIV' && paragraphNode.innerText.trim() === '') {
+                    lineText = ''; // This represents a blank line.
+                }
+
+                lines.push(lineText);
             }
-            return output.replace(/\n\n/g, '\n');
+            return lines.join('\n');
         }
+
 
         copyButton.addEventListener('click', () => {
             const formattedText = convertToRokFormat(editableMessage);
